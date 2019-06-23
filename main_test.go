@@ -16,7 +16,10 @@ import (
 // there are a lot of functions because each test can be run individually and sets up the complete
 // environment. That is because we run all the specs randomized.
 var _ = Describe("CrudExample", func() {
-	var rec *httptest.ResponseRecorder
+	var (
+		rec *httptest.ResponseRecorder
+		api *api2go.API
+	)
 
 	BeforeEach(func() {
 		api = api2go.NewAPIWithBaseURL("v0", "http://localhost:31415")
@@ -66,6 +69,68 @@ var _ = Describe("CrudExample", func() {
 
 	It("Creates a new building", func() {
 		createBuilding()
+	})
+
+	It("Gets bulding with pagination correctly", func() {
+		createBuilding()
+
+		// create another building
+		rec = httptest.NewRecorder()
+		req, err := http.NewRequest("POST", "/v0/buildings", strings.NewReader(`
+		{
+			"data": {
+				"type": "buildings",
+				"attributes": {
+					"address": "Jurong West"
+				}
+			}
+		}
+		`))
+		Expect(err).ToNot(HaveOccurred())
+		api.Handler().ServeHTTP(rec, req)
+		Expect(rec.Code).To(Equal(http.StatusCreated))
+
+		// Pagination
+		rec = httptest.NewRecorder()
+		req, err = http.NewRequest("GET", "/v0/buildings?page[limit]=1&page[offset]=1", strings.NewReader(`
+		{
+			"data": {
+				"type": "buildings",
+				"attributes": {
+					"address": "Jurong East"
+				}
+			}
+		}
+		`))
+		Expect(err).ToNot(HaveOccurred())
+		api.Handler().ServeHTTP(rec, req)
+		Expect(rec.Code).To(Equal(http.StatusOK))
+		Expect(rec.Body.String()).To(MatchJSON(`
+		{
+			"links": {
+				"first": "http://localhost:31415/v0/buildings?page[limit]=1&page[offset]=0",
+				"prev": "http://localhost:31415/v0/buildings?page[limit]=1&page[offset]=0"
+			},
+			"data": [
+				{
+					"type": "buildings",
+					"id": "2",
+					"attributes": {
+						"address": "Jurong West"
+					},
+					"relationships": {
+						"floors": {
+							"links": {
+								"related": "http://localhost:31415/v0/buildings/2/floors",
+								"self": "http://localhost:31415/v0/buildings/2/relationships/floors"
+							},
+							"data": []
+						}
+					}
+				}
+			]
+		}
+		`))
 	})
 
 	var createFloor = func() {
