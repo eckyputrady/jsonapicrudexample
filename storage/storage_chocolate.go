@@ -2,7 +2,7 @@ package storage
 
 import (
 	"fmt"
-	"sort"
+	"sync"
 
 	"github.com/eckyputrady/jsonapicrudexample/model"
 )
@@ -22,66 +22,100 @@ func (c byID) Less(i, j int) bool {
 	return c[i].GetID() < c[j].GetID()
 }
 
-// NewFloorStorage initializes the storage
-func NewFloorStorage() *FloorStorage {
-	return &FloorStorage{make(map[string]*model.Floor), 1}
+// FloorStorage stores all floors. This is thread-safe.
+type FloorStorage struct {
+	data   map[string]*model.Floor
+	nextID int
+	mutex  sync.RWMutex
 }
 
-// FloorStorage stores all of the tasty chocolate, needs to be injected into
-// User and Floor Resource. In the real world, you would use a database for that.
-type FloorStorage struct {
-	floors  map[string]*model.Floor
-	idCount int
+// NewFloorStorage initializes the storage
+func NewFloorStorage() *FloorStorage {
+	return &FloorStorage{data: make(map[string]*model.Floor), nextID: 1}
 }
 
 // GetAll of the chocolate
-func (s FloorStorage) GetAll() []model.Floor {
+func (s *FloorStorage) GetAll() []model.Floor {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
 	result := []model.Floor{}
-	for key := range s.floors {
-		result = append(result, *s.floors[key])
+	for i := 1; i < s.nextID; i++ {
+		f, err := s.GetOne(fmt.Sprintf("%d", i))
+		if err != nil {
+			continue
+		}
+		result = append(result, f)
 	}
 
-	sort.Sort(byID(result))
 	return result
 }
 
-// GetOne tasty chocolate
-func (s FloorStorage) GetOne(id string) (model.Floor, error) {
-	choc, ok := s.floors[id]
-	if ok {
-		return *choc, nil
+// GetOne floor
+func (s *FloorStorage) GetOne(id string) (model.Floor, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	data, exists := s.data[id]
+	if !exists {
+		return model.Floor{}, fmt.Errorf("Floor with id %s does not exist", id)
 	}
 
-	return model.Floor{}, fmt.Errorf("Floor for id %s not found", id)
+	return *data, nil
+}
+
+// GetMany floors by IDs
+func (s *FloorStorage) GetMany(ids []string) []model.Floor {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	result := []model.Floor{}
+	for _, id := range ids {
+		f, err := s.GetOne(id)
+		if err != nil {
+			continue
+		}
+		result = append(result, f)
+	}
+
+	return result
 }
 
 // Insert a fresh one
 func (s *FloorStorage) Insert(c model.Floor) string {
-	id := fmt.Sprintf("%d", s.idCount)
-	c.ID = id
-	s.floors[id] = &c
-	s.idCount++
-	return id
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	c.ID = fmt.Sprintf("%d", s.nextID)
+	s.data[c.ID] = &c
+	s.nextID++
+	return c.ID
 }
 
-// Delete one :(
+// Delete one floor
 func (s *FloorStorage) Delete(id string) error {
-	_, exists := s.floors[id]
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	_, exists := s.data[id]
 	if !exists {
 		return fmt.Errorf("Floor with id %s does not exist", id)
 	}
-	delete(s.floors, id)
+	delete(s.data, id)
 
 	return nil
 }
 
-// Update updates an existing chocolate
+// Update an existing floor
 func (s *FloorStorage) Update(c model.Floor) error {
-	_, exists := s.floors[c.ID]
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	_, exists := s.data[c.ID]
 	if !exists {
 		return fmt.Errorf("Floor with id %s does not exist", c.ID)
 	}
-	s.floors[c.ID] = &c
+	s.data[c.ID] = &c
 
 	return nil
 }

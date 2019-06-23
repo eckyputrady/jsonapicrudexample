@@ -6,12 +6,12 @@ import (
 	"github.com/manyminds/api2go/jsonapi"
 )
 
-// Building is a generic database user
+// Building represents a building
 type Building struct {
 	ID string `json:"-"`
 	//rename the username field to user-name.
-	Address   string   `json:"user-name"`
-	Floors    []*Floor `json:"-"`
+	Address   string   `json:"address"`
+	Floors    []Floor  `json:"-"`
 	FloorsIDs []string `json:"-"`
 }
 
@@ -60,7 +60,7 @@ func (u Building) GetReferencedStructs() []jsonapi.MarshalIdentifier {
 	return result
 }
 
-// SetToManyReferenceIDs sets the sweets reference IDs and satisfies the jsonapi.UnmarshalToManyRelations interface
+// SetToManyReferenceIDs sets the floors reference IDs and satisfies the jsonapi.UnmarshalToManyRelations interface
 func (u *Building) SetToManyReferenceIDs(name string, IDs []string) error {
 	if name == "floors" {
 		u.FloorsIDs = IDs
@@ -70,7 +70,7 @@ func (u *Building) SetToManyReferenceIDs(name string, IDs []string) error {
 	return errors.New("There is no to-many relationship with the name " + name)
 }
 
-// AddToManyIDs adds some new sweets that a users loves so much
+// AddToManyIDs adds some new floors
 func (u *Building) AddToManyIDs(name string, IDs []string) error {
 	if name == "floors" {
 		u.FloorsIDs = append(u.FloorsIDs, IDs...)
@@ -80,7 +80,7 @@ func (u *Building) AddToManyIDs(name string, IDs []string) error {
 	return errors.New("There is no to-many relationship with the name " + name)
 }
 
-// DeleteToManyIDs removes some sweets from a users because they made him very sick
+// DeleteToManyIDs removes some floors
 func (u *Building) DeleteToManyIDs(name string, IDs []string) error {
 	if name == "floors" {
 		for _, ID := range IDs {
@@ -91,6 +91,7 @@ func (u *Building) DeleteToManyIDs(name string, IDs []string) error {
 				}
 			}
 		}
+		return nil
 	}
 
 	return errors.New("There is no to-many relationship with the name " + name)
