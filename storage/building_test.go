@@ -1,6 +1,10 @@
 package storage_test
 
 import (
+	"fmt"
+	"strconv"
+	"sync"
+
 	"github.com/eckyputrady/jsonapicrudexample/model"
 	"github.com/eckyputrady/jsonapicrudexample/storage"
 	. "github.com/onsi/ginkgo"
@@ -113,6 +117,41 @@ var _ = Describe("Building Test", func() {
 			Expect(len).To(Equal(4))
 			expected := []model.Building{model.Building{ID: "4", Address: "D"}}
 			Expect(data).To(Equal(expected))
+		})
+	})
+
+	Describe("Concurrency", func() {
+		var asyncAddAndModify = func(wg *sync.WaitGroup) {
+			defer wg.Done()
+
+			// insert
+			id := sut.Insert(model.Building{})
+
+			// then either update or delete
+			idInt, _ := strconv.ParseInt(id, 10, 64)
+			if idInt > 50 {
+				sut.Delete(id)
+			} else {
+				sut.Update(model.Building{ID: id, Address: "Updated"})
+			}
+		}
+
+		It("Should be thread safe on writes", func() {
+			var wg sync.WaitGroup
+			wg.Add(100)
+			for i := 0; i < 100; i++ {
+				go asyncAddAndModify(&wg)
+			}
+			wg.Wait()
+
+			actual := sut.GetAll()
+			Expect(actual).To(HaveLen(50))
+
+			expected := []model.Building{}
+			for i := 1; i <= 50; i++ {
+				expected = append(expected, model.Building{ID: fmt.Sprintf("%d", i), Address: "Updated"})
+			}
+			Expect(actual).To(Equal(expected))
 		})
 	})
 })
