@@ -5,10 +5,10 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/eckyputrady/jsonapicrudexample/model"
+	"github.com/eckyputrady/jsonapicrudexample/resource"
+	"github.com/eckyputrady/jsonapicrudexample/storage"
 	"github.com/manyminds/api2go"
-	"github.com/manyminds/api2go/examples/model"
-	"github.com/manyminds/api2go/examples/resource"
-	"github.com/manyminds/api2go/examples/storage"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -20,21 +20,21 @@ var _ = Describe("CrudExample", func() {
 
 	BeforeEach(func() {
 		api = api2go.NewAPIWithBaseURL("v0", "http://localhost:31415")
-		userStorage := storage.NewUserStorage()
-		chocStorage := storage.NewChocolateStorage()
-		api.AddResource(model.User{}, resource.UserResource{ChocStorage: chocStorage, UserStorage: userStorage})
-		api.AddResource(model.Chocolate{}, resource.ChocolateResource{ChocStorage: chocStorage, UserStorage: userStorage})
+		buildingStorage := storage.NewBuildingStorage()
+		floorStorage := storage.NewFloorStorage()
+		api.AddResource(model.Building{}, resource.BuildingResource{FloorStorage: floorStorage, BuildingStorage: buildingStorage})
+		api.AddResource(model.Floor{}, resource.FloorResource{FloorStorage: floorStorage, BuildingStorage: buildingStorage})
 		rec = httptest.NewRecorder()
 	})
 
-	var createUser = func() {
+	var createBuilding = func() {
 		rec = httptest.NewRecorder()
-		req, err := http.NewRequest("POST", "/v0/users", strings.NewReader(`
+		req, err := http.NewRequest("POST", "/v0/buildings", strings.NewReader(`
 		{
 			"data": {
-				"type": "users",
+				"type": "buildings",
 				"attributes": {
-					"user-name": "marvin"
+					"address": "Jurong East"
 				}
 			}
 		}
@@ -44,23 +44,18 @@ var _ = Describe("CrudExample", func() {
 		Expect(rec.Code).To(Equal(http.StatusCreated))
 		Expect(rec.Body.String()).To(MatchJSON(`
 		{
-			"meta": {
-				"author": "The api2go examples crew",
-				"license": "wtfpl",
-				"license-url": "http://www.wtfpl.net"
-			},
 			"data": {
 				"id": "1",
-				"type": "users",
+				"type": "buildings",
 				"attributes": {
-					"user-name": "marvin"
+					"address": "Jurong East"
 				},
 				"relationships": {
-					"sweets": {
+					"floors": {
 						"data": [],
 						"links": {
-							"related": "http://localhost:31415/v0/users/1/sweets",
-							"self": "http://localhost:31415/v0/users/1/relationships/sweets"
+							"related": "http://localhost:31415/v0/buildings/1/floors",
+							"self": "http://localhost:31415/v0/buildings/1/relationships/floors"
 						}
 					}
 				}
@@ -69,19 +64,18 @@ var _ = Describe("CrudExample", func() {
 		`))
 	}
 
-	It("Creates a new user", func() {
-		createUser()
+	It("Creates a new building", func() {
+		createBuilding()
 	})
 
-	var createChocolate = func() {
+	var createFloor = func() {
 		rec = httptest.NewRecorder()
-		req, err := http.NewRequest("POST", "/v0/chocolates", strings.NewReader(`
+		req, err := http.NewRequest("POST", "/v0/floors", strings.NewReader(`
 		{
 			"data": {
-				"type": "chocolates",
+				"type": "floors",
 				"attributes": {
-					"name": "Ritter Sport",
-					"taste": "Very Good"
+					"name": "B2"
 				}
 			}
 		}
@@ -91,35 +85,29 @@ var _ = Describe("CrudExample", func() {
 		Expect(rec.Code).To(Equal(http.StatusCreated))
 		Expect(rec.Body.String()).To(MatchJSON(`
 		{
-			"meta": {
-				"author": "The api2go examples crew",
-				"license": "wtfpl",
-				"license-url": "http://www.wtfpl.net"
-			},
 			"data": {
 				"id": "1",
-				"type": "chocolates",
+				"type": "floors",
 				"attributes": {
-					"name": "Ritter Sport",
-					"taste": "Very Good"
+					"name": "B2"
 				}
 			}
 		}
 		`))
 	}
 
-	It("Creates a new chocolate", func() {
-		createChocolate()
+	It("Creates a new floor", func() {
+		createFloor()
 	})
 
-	var replaceSweets = func() {
+	var replaceFloors = func() {
 		rec = httptest.NewRecorder()
-		By("Replacing sweets relationship with PATCH")
+		By("Replacing floors relationship with PATCH")
 
-		req, err := http.NewRequest("PATCH", "/v0/users/1/relationships/sweets", strings.NewReader(`
+		req, err := http.NewRequest("PATCH", "/v0/buildings/1/relationships/floors", strings.NewReader(`
 		{
 			"data": [{
-				"type": "chocolates",
+				"type": "floors",
 				"id": "1"
 			}]
 		}
@@ -128,71 +116,63 @@ var _ = Describe("CrudExample", func() {
 		api.Handler().ServeHTTP(rec, req)
 		Expect(rec.Code).To(Equal(http.StatusNoContent))
 
-		By("Loading the user from the backend, it should have the relationship")
-
 		rec = httptest.NewRecorder()
-		req, err = http.NewRequest("GET", "/v0/users/1", nil)
+		req, err = http.NewRequest("GET", "/v0/buildings/1", nil)
 		api.Handler().ServeHTTP(rec, req)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(rec.Body.String()).To(MatchJSON(`
 		{
-			"meta": {
-				"author": "The api2go examples crew",
-				"license": "wtfpl",
-				"license-url": "http://www.wtfpl.net"
-			},
 			"data": {
 				"attributes": {
-					"user-name": "marvin"
+					"address": "Jurong East"
 				},
 				"id": "1",
 				"relationships": {
-					"sweets": {
+					"floors": {
 						"data": [
 							{
 								"id": "1",
-								"type": "chocolates"
+								"type": "floors"
 							}
 						],
 						"links": {
-							"related": "http://localhost:31415/v0/users/1/sweets",
-							"self": "http://localhost:31415/v0/users/1/relationships/sweets"
+							"related": "http://localhost:31415/v0/buildings/1/floors",
+							"self": "http://localhost:31415/v0/buildings/1/relationships/floors"
 						}
 					}
 				},
-				"type": "users"
+				"type": "buildings"
 			},
 			"included": [
 				{
 					"attributes": {
-						"name": "Ritter Sport",
-						"taste": "Very Good"
+						"name": "B2"
 					},
 					"id": "1",
-					"type": "chocolates"
+					"type": "floors"
 				}
 			]
 		}
 		`))
 	}
 
-	It("Creates a user with references chocolates", func() {
-		createChocolate()
+	It("Creates a building with references floors", func() {
+		createFloor()
 
 		rec = httptest.NewRecorder()
-		req, err := http.NewRequest("POST", "/v0/users", strings.NewReader(`
+		req, err := http.NewRequest("POST", "/v0/buildings", strings.NewReader(`
     {
       "data": {
-        "type": "users",
+        "type": "buildings",
         "attributes": {
-          "user-name": "marvin"
+          "address": "Jurong East"
         },
         "relationships": {
-          "sweets": {
+          "floors": {
             "data": [
             {
               "id": "1",
-              "type": "chocolates"
+              "type": "floors"
             }
             ]
           }
@@ -205,28 +185,23 @@ var _ = Describe("CrudExample", func() {
 		Expect(rec.Code).To(Equal(http.StatusCreated))
 		Expect(rec.Body.String()).To(MatchJSON(`
           {
-            "meta": {
-              "author": "The api2go examples crew",
-              "license": "wtfpl",
-              "license-url": "http://www.wtfpl.net"
-            },
             "data": {
               "id": "1",
-              "type": "users",
+              "type": "buildings",
               "attributes": {
-                "user-name": "marvin"
+                "address": "Jurong East"
               },
               "relationships": {
-                "sweets": {
+                "floors": {
                   "data": [
                     {
                       "id": "1",
-                      "type": "chocolates"
+                      "type": "floors"
                     }
                   ],
                   "links": {
-                    "related": "http://localhost:31415/v0/users/1/sweets",
-                    "self": "http://localhost:31415/v0/users/1/relationships/sweets"
+                    "related": "http://localhost:31415/v0/buildings/1/floors",
+                    "self": "http://localhost:31415/v0/buildings/1/relationships/floors"
                   }
                 }
               }
@@ -235,24 +210,24 @@ var _ = Describe("CrudExample", func() {
           `))
 	})
 
-	It("Replaces users sweets", func() {
-		createUser()
-		createChocolate()
-		replaceSweets()
+	It("Replaces buildings floors", func() {
+		createBuilding()
+		createFloor()
+		replaceFloors()
 	})
 
-	It("Deletes a users sweet", func() {
-		createUser()
-		createChocolate()
-		replaceSweets()
+	It("Deletes a buildings floor", func() {
+		createBuilding()
+		createFloor()
+		replaceFloors()
 		rec = httptest.NewRecorder()
 
-		By("Deleting the users only sweet with ID 1")
+		By("Deleting the buildings only floor with ID 1")
 
-		req, err := http.NewRequest("DELETE", "/v0/users/1/relationships/sweets", strings.NewReader(`
+		req, err := http.NewRequest("DELETE", "/v0/buildings/1/relationships/floors", strings.NewReader(`
 		{
 			"data": [{
-				"type": "chocolates",
+				"type": "floors",
 				"id": "1"
 			}]
 		}
@@ -261,50 +236,43 @@ var _ = Describe("CrudExample", func() {
 		api.Handler().ServeHTTP(rec, req)
 		Expect(rec.Code).To(Equal(http.StatusNoContent))
 
-		By("Loading the user from the backend, it should not have any relations")
-
 		rec = httptest.NewRecorder()
-		req, err = http.NewRequest("GET", "/v0/users/1", nil)
+		req, err = http.NewRequest("GET", "/v0/buildings/1", nil)
 		api.Handler().ServeHTTP(rec, req)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(rec.Body.String()).To(MatchJSON(`
 		{
-			"meta": {
-				"author": "The api2go examples crew",
-				"license": "wtfpl",
-				"license-url": "http://www.wtfpl.net"
-			},
 			"data": {
 				"attributes": {
-					"user-name": "marvin"
+					"address": "Jurong East"
 				},
 				"id": "1",
 				"relationships": {
-					"sweets": {
+					"floors": {
 						"data": [],
 						"links": {
-							"related": "http://localhost:31415/v0/users/1/sweets",
-							"self": "http://localhost:31415/v0/users/1/relationships/sweets"
+							"related": "http://localhost:31415/v0/buildings/1/floors",
+							"self": "http://localhost:31415/v0/buildings/1/relationships/floors"
 						}
 					}
 				},
-				"type": "users"
+				"type": "buildings"
 			}
 		}
 		`))
 	})
 
-	It("Adds a users sweet", func() {
-		createUser()
-		createChocolate()
+	It("Adds a buildings floor", func() {
+		createBuilding()
+		createFloor()
 		rec = httptest.NewRecorder()
 
-		By("Adding a sweet with POST")
+		By("Adding a floor with POST")
 
-		req, err := http.NewRequest("POST", "/v0/users/1/relationships/sweets", strings.NewReader(`
+		req, err := http.NewRequest("POST", "/v0/buildings/1/relationships/floors", strings.NewReader(`
 		{
 			"data": [{
-				"type": "chocolates",
+				"type": "floors",
 				"id": "1"
 			}]
 		}
@@ -313,69 +281,62 @@ var _ = Describe("CrudExample", func() {
 		api.Handler().ServeHTTP(rec, req)
 		Expect(rec.Code).To(Equal(http.StatusNoContent))
 
-		By("Loading the user from the backend, it should have the relationship")
+		By("Loading the building from the backend, it should have the relationship")
 
 		rec = httptest.NewRecorder()
-		req, err = http.NewRequest("GET", "/v0/users/1", nil)
+		req, err = http.NewRequest("GET", "/v0/buildings/1", nil)
 		api.Handler().ServeHTTP(rec, req)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(rec.Body.String()).To(MatchJSON(`
 		{
-			"meta": {
-				"author": "The api2go examples crew",
-				"license": "wtfpl",
-				"license-url": "http://www.wtfpl.net"
-			},
 			"data": {
 				"attributes": {
-					"user-name": "marvin"
+					"address": "Jurong East"
 				},
 				"id": "1",
 				"relationships": {
-					"sweets": {
+					"floors": {
 						"data": [
 							{
 								"id": "1",
-								"type": "chocolates"
+								"type": "floors"
 							}
 						],
 						"links": {
-							"related": "http://localhost:31415/v0/users/1/sweets",
-							"self": "http://localhost:31415/v0/users/1/relationships/sweets"
+							"related": "http://localhost:31415/v0/buildings/1/floors",
+							"self": "http://localhost:31415/v0/buildings/1/relationships/floors"
 						}
 					}
 				},
-				"type": "users"
+				"type": "buildings"
 			},
 			"included": [
 				{
 					"attributes": {
-						"name": "Ritter Sport",
-						"taste": "Very Good"
+						"name": "B2"
 					},
 					"id": "1",
-					"type": "chocolates"
+					"type": "floors"
 				}
 			]
 		}
 		`))
 	})
 
-	Describe("Load sweets of a user directly", func() {
+	Describe("Load floors of a building directly", func() {
 		BeforeEach(func() {
-			createUser()
-			createChocolate()
-			replaceSweets()
+			createBuilding()
+			createFloor()
+			replaceFloors()
 			rec = httptest.NewRecorder()
 
-			// add another sweet so we have 2, only 1 is connected with the user
-			req, err := http.NewRequest("POST", "/v0/chocolates", strings.NewReader(`
+			// add another floor so we have 2, only 1 is connected with the building
+			req, err := http.NewRequest("POST", "/v0/floors", strings.NewReader(`
 			{
 				"data": {
-					"type": "chocolates",
+					"type": "floors",
 					"attributes": {
-						"name": "Black Chocolate",
-						"taste": "Bitter"
+						"name": "G"
 					}
 				}
 			}
@@ -385,17 +346,11 @@ var _ = Describe("CrudExample", func() {
 			Expect(rec.Code).To(Equal(http.StatusCreated))
 			Expect(rec.Body.String()).To(MatchJSON(`
 			{
-				"meta": {
-					"author": "The api2go examples crew",
-					"license": "wtfpl",
-					"license-url": "http://www.wtfpl.net"
-				},
 				"data": {
 					"id": "2",
-					"type": "chocolates",
+					"type": "floors",
 					"attributes": {
-						"name": "Black Chocolate",
-						"taste": "Bitter"
+						"name": "G"
 					}
 				}
 			}
@@ -404,106 +359,87 @@ var _ = Describe("CrudExample", func() {
 			rec = httptest.NewRecorder()
 		})
 
-		It("There are 2 chocolates in the datastorage now", func() {
-			req, err := http.NewRequest("GET", "/v0/chocolates", nil)
+		It("There are 2 floors in the datastorage now", func() {
+			req, err := http.NewRequest("GET", "/v0/floors", nil)
 			Expect(err).ToNot(HaveOccurred())
 			api.Handler().ServeHTTP(rec, req)
 			Expect(rec.Code).To(Equal(http.StatusOK))
 			Expect(rec.Body.String()).To(MatchJSON(`
 			{
-				"meta": {
-					"author": "The api2go examples crew",
-					"license": "wtfpl",
-					"license-url": "http://www.wtfpl.net"
-				},
 				"data": [
 					{
 						"attributes": {
-							"name": "Ritter Sport",
-							"taste": "Very Good"
+							"name": "B2"
 						},
 						"id": "1",
-						"type": "chocolates"
+						"type": "floors"
 					},
 					{
 						"attributes": {
-							"name": "Black Chocolate",
-							"taste": "Bitter"
+							"name": "G"
 						},
 						"id": "2",
-						"type": "chocolates"
+						"type": "floors"
 					}
 				]
 			}
 			`))
 		})
 
-		It("The user only has the previously connected sweet", func() {
-			req, err := http.NewRequest("GET", "/v0/users/1", nil)
+		It("The building only has the previously connected floor", func() {
+			req, err := http.NewRequest("GET", "/v0/buildings/1", nil)
 			Expect(err).ToNot(HaveOccurred())
 			api.Handler().ServeHTTP(rec, req)
 			Expect(rec.Code).To(Equal(http.StatusOK))
 			Expect(rec.Body.String()).To(MatchJSON(`
 			{
-				"meta": {
-					"author": "The api2go examples crew",
-					"license": "wtfpl",
-					"license-url": "http://www.wtfpl.net"
-				},
 				"data": {
 					"attributes": {
-						"user-name": "marvin"
+						"address": "Jurong East"
 					},
 					"id": "1",
 					"relationships": {
-						"sweets": {
+						"floors": {
 							"data": [
 								{
 									"id": "1",
-									"type": "chocolates"
+									"type": "floors"
 								}
 							],
 							"links": {
-								"related": "http://localhost:31415/v0/users/1/sweets",
-								"self": "http://localhost:31415/v0/users/1/relationships/sweets"
+								"related": "http://localhost:31415/v0/buildings/1/floors",
+								"self": "http://localhost:31415/v0/buildings/1/relationships/floors"
 							}
 						}
 					},
-					"type": "users"
+					"type": "buildings"
 				},
 				"included": [
 					{
 						"attributes": {
-							"name": "Ritter Sport",
-							"taste": "Very Good"
+							"name": "B2"
 						},
 						"id": "1",
-						"type": "chocolates"
+						"type": "floors"
 					}
 				]
 			}
 			`))
 		})
 
-		It("Directly loading the sweets", func() {
-			req, err := http.NewRequest("GET", "/v0/users/1/sweets", nil)
+		It("Directly loading the floors", func() {
+			req, err := http.NewRequest("GET", "/v0/buildings/1/floors", nil)
 			Expect(err).ToNot(HaveOccurred())
 			api.Handler().ServeHTTP(rec, req)
 			Expect(rec.Code).To(Equal(http.StatusOK))
 			Expect(rec.Body.String()).To(MatchJSON(`
 			{
-				"meta": {
-					"author": "The api2go examples crew",
-					"license": "wtfpl",
-					"license-url": "http://www.wtfpl.net"
-				},
 				"data": [
 				{
-					"type": "chocolates",
+					"type": "floors",
 					"id": "1",
 					"attributes": {
-						"name": "Ritter Sport",
-						"taste": "Very Good"
+						"name": "B2"
 					}
 				}
 				]
@@ -512,26 +448,21 @@ var _ = Describe("CrudExample", func() {
 		})
 
 		It("The relationship route works too", func() {
-			req, err := http.NewRequest("GET", "/v0/users/1/relationships/sweets", nil)
+			req, err := http.NewRequest("GET", "/v0/buildings/1/relationships/floors", nil)
 			Expect(err).ToNot(HaveOccurred())
 			api.Handler().ServeHTTP(rec, req)
 			Expect(rec.Code).To(Equal(http.StatusOK))
 			Expect(rec.Body.String()).To(MatchJSON(`
 			{
-				"meta": {
-					"author": "The api2go examples crew",
-					"license": "wtfpl",
-					"license-url": "http://www.wtfpl.net"
-				},
 				"data": [
 					{
 						"id": "1",
-						"type": "chocolates"
+						"type": "floors"
 					}
 				],
 				"links": {
-					"related": "http://localhost:31415/v0/users/1/sweets",
-					"self": "http://localhost:31415/v0/users/1/relationships/sweets"
+					"related": "http://localhost:31415/v0/buildings/1/floors",
+					"self": "http://localhost:31415/v0/buildings/1/relationships/floors"
 				}
 			}
 			`))

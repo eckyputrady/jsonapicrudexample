@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/eckyputrady/jsonapicrudexample/model"
-	"github.com/eckyputrady/jsonapicrudexample/resolver"
 	"github.com/eckyputrady/jsonapicrudexample/resource"
 	"github.com/eckyputrady/jsonapicrudexample/storage"
 	"github.com/julienschmidt/httprouter"
@@ -15,7 +14,7 @@ import (
 func main() {
 	port := 31415
 	host := "localhost"
-	api := api2go.NewAPIWithResolver("v0", &resolver.RequestURL{Port: port, Host: host})
+	api := api2go.NewAPIWithBaseURL("v0", fmt.Sprintf("http://%s:%d", host, port))
 
 	buildingStorage := storage.NewBuildingStorage()
 	floorStorage := storage.NewFloorStorage()
