@@ -38,8 +38,6 @@ func (s *BuildingStorage) GetAll() []model.Building {
 
 // PaginatedFindAll returns all buildings with pagination params
 func (s *BuildingStorage) PaginatedFindAll(page int, size int) (int, []model.Building) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
 	offset := size * (page - 1)
 	limit := size
 	return s.PaginatedFindAllLimitOffset(limit, offset)
