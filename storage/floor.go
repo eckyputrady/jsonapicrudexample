@@ -7,21 +7,6 @@ import (
 	"github.com/eckyputrady/jsonapicrudexample/model"
 )
 
-// sorting
-type byID []model.Floor
-
-func (c byID) Len() int {
-	return len(c)
-}
-
-func (c byID) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
-}
-
-func (c byID) Less(i, j int) bool {
-	return c[i].GetID() < c[j].GetID()
-}
-
 // FloorStorage stores all floors. This is thread-safe.
 type FloorStorage struct {
 	data   map[string]*model.Floor

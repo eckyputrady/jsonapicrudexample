@@ -2,8 +2,29 @@
 
 The code is heavily inspired from https://github.com/manyminds/api2go/tree/master/examples
 
+## Run Tests
+
+```
+go test ./...
+```
+
+## Running
+
+```
+go run main.go
+```
+
+## Building and running
+
+```
+go build
+chmod +x 
+./jsonapicrudexample
+```
+
 ## APIs
 
+```
 Create a new building:
 	curl -X POST http://localhost:31415/v0/buildings -d '{"data" : {"type" : "buildings" , "attributes": {"address" : "hello"}}}'
 
@@ -38,3 +59,4 @@ Add a floor
 
 Remove a floor
 	curl -X DELETE http://localhost:31415/v0/buildings/1/relationships/floors -d '{"data" : [{"type": "floors", "id": "2"}]}'
+```
